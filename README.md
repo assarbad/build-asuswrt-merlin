@@ -4,7 +4,7 @@ Helper scripts to build [RMerl/asuswrt-merlin](https://github.com/RMerl/asuswrt-
 
 ## Summary
 
-Last tested on `master` from RMerl/asuswrt-merlin as of 2015-01-25. The script takes care of the steps mentioned above for Ubuntu 13.10 and newer. In addition it does fixups to the source tree which ensure that it can run without superuser rights as long as the user makes has all the packages installed. It will also check for the packages being installed and bail out with a meaningful error message if not.
+Last tested on `master` from RMerl/asuswrt-merlin as of 2015-01-25. The script takes care of the steps mentioned above for Ubuntu 13.10 and newer. In addition it does fixups to the source tree which ensure that it can run without superuser rights as long as the user makes sure all the packages are installed. It will also check for the packages being installed and bail out with a meaningful error message if not.
 
 It can be run in two modes: with or without `sudo` involved. With `sudo` it will use the symbolic link method inside `/opt`, whereas without it will modify the files in the source tree to adjust hardcoded paths.
 
