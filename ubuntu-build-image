@@ -136,7 +136,7 @@ for i in mipsel-linux-addr2line mipsel-linux-ar mipsel-linux-as mipsel-linux-c++
 	$i --version > /dev/null 2>&1 || fatal "failed to execute $i"
 done
 # Do the make
-echo -e "${Y}NOTE:${Z} running ${W}make clean${Z}"
+echo -e "${Y}NOTE:${Z} running ${W}make -C release/$MKBASE clean${Z}"
 make -C "$BASEDIR/release/$MKBASE" "TOOLCHAIN=$TOOLCHAIN" clean > /dev/null 2>&1
-echo -e "${Y}NOTE:${Z} running ${W}make ${ROUTERMDL,,}${Z}"
+echo -e "${Y}NOTE:${Z} running ${W}make -C release/$MKBASE ${ROUTERMDL,,}${Z}"
 make -C "$BASEDIR/release/$MKBASE" "TOOLCHAIN=$TOOLCHAIN" ${ROUTERMDL,,}
