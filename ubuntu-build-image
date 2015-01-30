@@ -89,7 +89,10 @@ let UBUREL=0x$(lsb_release -sr|tr -d '.')
 ((UBUREL >= 0x1204)) || fatal "expecting a ${W}Ubuntu >= 12.04{$Z} (precise)."
 ((UBUREL == 0x1404)) || echo -e "${Y}NOTE:${Z} this script has only been tested on Ubuntu 14.04. If you run it on a different platform, please report back if it works. But more importantly report back if it doesn't. Thanks."
 # All those packages are required according to the asuswrt-merlin docs
-PREREQ_PKGS="autoconf automake bash bison bzip2 diffutils file flex g++ gawk gcc-multilib gettext gperf groff-base libncurses-dev libexpat1-dev libslang2 libssl-dev libtool libxml-parser-perl make patch perl pkg-config python sed shtool tar texinfo unzip zlib1g zlib1g-dev lib32z1-dev lib32stdc++6"
+PREREQ_PKGS="autoconf automake bash bison bzip2 diffutils file flex g++ gawk gcc-multilib gettext gperf groff-base libncurses-dev libexpat1-dev libslang2 libssl-dev libtool libxml-parser-perl make patch perl pkg-config python sed shtool tar texinfo unzip zlib1g zlib1g-dev"
+PREREQ_PKGS64BIT="lib32z1-dev lib32stdc++6"
+# On x86_64 we also need two additional packages
+[[ "x$(uname -m)" == "x86_64" ]] && PREREQ_PKGS="$PREREQ_PKGS $PREREQ_PKGS64BIT"
 # On Ubuntu 13.10 and later we check for two additional packages
 ((UBUREL >= 0x1310)) && PREREQ_PKGS="$PREREQ_PKGS automake1.11 libproxy-dev"
 # Did the user ask to install prerequisites instead?
@@ -132,7 +135,8 @@ fi
 # Add the toolchain into the PATH
 export PATH="$PATH:$TOOLCHAIN/bin"
 # Check that the relevant tools execute from there
-for i in mipsel-linux-addr2line mipsel-linux-ar mipsel-linux-as mipsel-linux-c++ mipsel-linux-cc mipsel-linux-c++filt mipsel-linux-cpp mipsel-linux-g++ mipsel-linux-gcc mipsel-linux-gcc-4.2.4 mipsel-linux-gccbug mipsel-linux-gcov mipsel-linux-gprof mipsel-linux-ld mipsel-linux-nm mipsel-linux-objcopy mipsel-linux-objdump mipsel-linux-ranlib mipsel-linux-readelf mipsel-linux-size mipsel-linux-strings mipsel-linux-strip; do
+echo -e "${Y}NOTE:${Z} invoking each of the required programs to detect possible issues"
+for i in mipsel-linux-addr2line mipsel-linux-ar mipsel-linux-as mipsel-linux-c++ mipsel-linux-cc mipsel-linux-c++filt mipsel-linux-cpp mipsel-linux-g++ mipsel-linux-gcc mipsel-linux-gcc-4.2.4 mipsel-linux-gcov mipsel-linux-gprof mipsel-linux-ld mipsel-linux-nm mipsel-linux-objcopy mipsel-linux-objdump mipsel-linux-ranlib mipsel-linux-readelf mipsel-linux-size mipsel-linux-strings mipsel-linux-strip; do
 	$i --version > /dev/null 2>&1 || fatal "failed to execute $i"
 done
 # Do the make
