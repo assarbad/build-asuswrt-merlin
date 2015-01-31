@@ -21,6 +21,14 @@ You can leave out the `path-to-asuswrt-merlin` argument and the script will chec
 
 Any non-empty value for `USE_SUDO` can be used and you can of course also export it up front, instead of prepending it to the command line.
 
+### Special syntax for prerequisites
+
+In order to have the script install all the prerequisites using `apt-get`, use the following method:
+
+* `./ubuntu-build-image --prereq` (or `-P`)
+
+Please note that this requires you to be a sudoer. Usually that means you need to be a member of the group `sudo` on `.deb`-based distros or `wheel` on `.rpm`-based distros.
+
 ## Usage on Ubuntu
 
 ### Preparation
