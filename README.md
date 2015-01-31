@@ -2,6 +2,8 @@
 
 Helper scripts to build [RMerl/asuswrt-merlin](https://github.com/RMerl/asuswrt-merlin) without much extra typing.
 
+* Backlink to [Compile firmware from source using Ubuntu](https://github.com/RMerl/asuswrt-merlin/wiki/Compile-Firmware-from-source-using-Ubuntu).
+
 ## Summary
 
 Last tested on `master` from RMerl/asuswrt-merlin as of 2015-01-25. The script takes care of the steps mentioned above for Ubuntu 13.10 and newer. In addition it does fixups to the source tree which ensure that it can run without superuser rights as long as the user makes sure all the packages are installed. It will also check for the packages being installed and bail out with a meaningful error message if not.
