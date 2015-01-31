@@ -62,6 +62,6 @@ Oh and feel free to fork or embed this into your repository.
 
 ## License
 
-This work is released into the public domain. See LICENSE. If public domain is not an acknowledged legal concept in your country, treat as CC0.
+This work is released into the public domain. See LICENSE. If _public domain_ is not a recognized legal concept in your jurisdiction, treat as [CC0](https://creativecommons.org/publicdomain/zero/1.0/); which should have the proper wording for many jurisdictions. The disclaimer from `LICENSE` (second to last paragraph) still applies.
 
 If neither of these suite your needs, please ask by opening a ticket.
