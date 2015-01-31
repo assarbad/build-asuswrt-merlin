@@ -66,7 +66,7 @@ fi
 [[ -n "$ROUTERMDL" ]] || fatal help "you have to ${W}give the router model${Z} to build for."
 # Match the router model to find the correct base directory for make
 case ${ROUTERMDL^^} in
-	-P|--prereq*)
+	-P|--prereq|--prereq*)
 		INSTALL_PREREQ=1
 		;;
 	RT-N16)
