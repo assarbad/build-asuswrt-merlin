@@ -98,7 +98,7 @@ PREREQ_PKGS64BIT="lib32z1-dev lib32stdc++6"
 # Did the user ask to install prerequisites instead?
 [[ -n "$INSTALL_PREREQ" ]] && install_prerequisites
 echo -en "${R}"
-dpkg-query --load-avail -l $PREREQ_PKGS > /dev/null || fatal "it appears you have packages missing (see above) that are required to build a firmware image.\nUse:\n\t${W}$0 --prereq${Z}\n\t${W}apt-get --no-install-recommends install${Z} ...\nto install the missing packages, then retry."
+dpkg-query --load-avail -l $PREREQ_PKGS > /dev/null || fatal "it appears you have packages missing (see above) that are required to build a firmware image.\nUse:\n\t${W}$0 --prereq${Z}\nor:\n\t${W}apt-get --no-install-recommends install${Z} ...\nto install the missing packages, then retry."
 echo -en "${Z}"
 # Special steps required on Ubuntu newer than or equal to 13.10
 if ((UBUREL >= 0x1310)); then
