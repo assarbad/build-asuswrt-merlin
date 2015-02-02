@@ -10,22 +10,41 @@ Last tested on `master` from RMerl/asuswrt-merlin as of 2015-01-25. The script t
 
 It can be run in two modes: with or without `sudo` involved. With `sudo` it will use the symbolic link method inside `/opt`, whereas without it will modify the files in the source tree to adjust hardcoded paths.
 
-If you are running inside a [`tmux`](http://tmux.sourceforge.net/) pane, this will also pipe the output into a log file.
+If you are running inside a [`tmux`](http://tmux.sourceforge.net/) pane, this will also pipe the output into a log file (see _Environment variables_).
 
 ## Syntax
 
-* Unprivileged: `./ubuntu-build-image <router-model> [path-to-asuswrt-merlin]`
-* With `sudo`: `USE_SUDO=1 ./ubuntu-build-image <router-model> [path-to-asuswrt-merlin]`
+* Unprivileged: `./debian-build-image <router-model> [path-to-asuswrt-merlin]`
+* With `sudo`: `USE_SUDO=1 ./debian-build-image <router-model> [path-to-asuswrt-merlin]`
 
 You can leave out the `path-to-asuswrt-merlin` argument and the script will check the folder it resides in for a marker file (`README-merlin.txt`) to see whether this is the expected source tree.
 
-Any non-empty value for `USE_SUDO` can be used and you can of course also export it up front, instead of prepending it to the command line.
+### Environment variables
+
+Some environment variables influence how the script behaves:
+
+* Any non-empty value for `USE_SUDO` will cause the image creation process to assume that `sudo` is available to symlink the toolchain into `/opt`. This is useful if for some reason the unprivileged method fails or if you simply prefer to stick closer to the process explained on the RMerl/asuswrt-merlin wiki.
+* Any non-empty value for `FORCE_UNSUPPORTED` can be used to run the script on otherwise not explicitly supported Debian flavors.
+* `TMUX_PANE` is used to sense the presence of a `tmux` session and will turn on logging. To inhibit this behavior, make sure to either `unset` this variable or to give it an empty value during invocation (i.e. `TMUX_PANE= ./debian-build-image` ...).
+
+You can either set the environment variable globally by exporting it prior to the invocation, e.g.:
+
+```bash
+export USE_SUDO=1
+./debian-build-image RT-N66U
+```
+
+... or by passing it on the command line like so:
+
+```bash
+USE_SUDO=1 ./debian-build-image RT-N66U
+```
 
 ### Special syntax for prerequisites
 
 In order to have the script install all the prerequisites using `apt-get`, use the following method:
 
-* `./ubuntu-build-image --prereq` (or `-P`)
+* `./debian-build-image --prereq` (or `-P`)
 
 Please note that this requires you to be a sudoer. Usually that means you need to be a member of the group `sudo` on `.deb`-based distros or `wheel` on `.rpm`-based distros.
 
@@ -38,19 +57,19 @@ Please note that this requires you to be a sudoer. Usually that means you need t
 * Clone the RMerl/asuswrt-merlin source:
   * via SSH: `git clone git@github.com:RMerl/asuswrt-merlin.git`
   * via HTTPS: `git clone https://github.com/RMerl/asuswrt-merlin.git`
-* Clone this repository or download the raw `ubuntu-build-image` script:
+* Clone this repository or download the raw `debian-build-image` script:
   * via SSH: `git@github.com:assarbad/build-asuswrt-merlin.git`
   * via HTTPS: `https://github.com/assarbad/build-asuswrt-merlin.git`
-  * Download `wget https://raw.githubusercontent.com/assarbad/build-asuswrt-merlin/master/ubuntu-build-image && chmod +x ubuntu-build-image`
-* Copy `ubuntu-build-image` into the clone of RMerl/asuswrt-merlin (e.g. `~/asuswrt-merlin`).
-* Change into the RMerl/asuswrt-merlin directory (e.g. `~/asuswrt-merlin`) and invoke `./ubuntu-build-image --prereq` there.
+  * Download `wget https://raw.githubusercontent.com/assarbad/build-asuswrt-merlin/master/debian-build-image && chmod +x debian-build-image`
+* Copy `debian-build-image` into the clone of RMerl/asuswrt-merlin (e.g. `~/asuswrt-merlin`).
+* Change into the RMerl/asuswrt-merlin directory (e.g. `~/asuswrt-merlin`) and invoke `./debian-build-image --prereq` there.
   * This will prompt you to execute a `sudo` command to install all prerequisites. This command does not check before whether some packages are missing, though. Remember that this requires you to be a sudoer!
 
 ### Building an image
 
 Well, the syntax has been explained above. Running the script is as easy as invoking (from our previous example):
 
-    ~/asuswrt-merlin/ubuntu-build-image RT-N66U
+    ~/asuswrt-merlin/debian-build-image RT-N66U
 
 The name of the router is case-insensitive. Also, it handles the models with their U, R, and W prefixes.
 
@@ -59,7 +78,7 @@ At this point you'll probably want to take a break and come back later. This wil
 ### Starting over
 
 * Change into the clone directory
-* You'll want to issue a `git reset --hard` inside the cloned repository to undo all the changes `ubuntu-build-image` does
+* You'll want to issue a `git reset --hard` inside the cloned repository to undo all the changes `debian-build-image` does
 * And then start over after the preparation steps above
 
 ## Contribute
