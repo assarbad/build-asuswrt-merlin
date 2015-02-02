@@ -2,7 +2,9 @@
 
 Helper scripts to build [RMerl/asuswrt-merlin](https://github.com/RMerl/asuswrt-merlin) without much extra typing.
 
-* Backlink to [Compile firmware from source using Ubuntu](https://github.com/RMerl/asuswrt-merlin/wiki/Compile-Firmware-from-source-using-Ubuntu).
+* Backlink to [Compile Firmware from source using Ubuntu](https://github.com/RMerl/asuswrt-merlin/wiki/Compiling-from-source-using-a-Debian-based-Linux-Distribution)
+* Backlink to [Compile Firmware from source using Linux Mint](https://github.com/RMerl/asuswrt-merlin/wiki/Compile-Firmware-from-source-using-Linux-Mint)
+* Backlink to [Compile firmware from source using Ubuntu](https://github.com/RMerl/asuswrt-merlin/wiki/Compile-Firmware-from-source-using-Ubuntu)
 
 ## Summary
 
@@ -18,6 +20,16 @@ If you are running inside a [`tmux`](http://tmux.sourceforge.net/) pane, this wi
 * With `sudo`: `USE_SUDO=1 ./debian-build-image <router-model> [path-to-asuswrt-merlin]`
 
 You can leave out the `path-to-asuswrt-merlin` argument and the script will check the folder it resides in for a marker file (`README-merlin.txt`) to see whether this is the expected source tree.
+
+### Supported router models
+
+* RT-N16
+* RT-N66U
+* RT-AC66U
+* RT-AC56U
+* RT-AC68U
+
+The \*R and \*W variants of the routers are also supported. R is for retail versions and W for white models. The firmware is the same. The router name can be given in upper or lower case and you can leave out the trailing U, R or W.
 
 ### Environment variables
 
