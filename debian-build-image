@@ -8,7 +8,7 @@
 [[ -n "$DEBUG" ]] && set -x
 pushd $(dirname $0) > /dev/null; CURRABSPATH=$(readlink -nf "$(pwd)"); popd > /dev/null
 [[ -t 1 ]] && { G="\e[1;32m"; R="\e[1;31m"; Z="\e[0m"; B="\e[1;34m"; W="\e[1;37m"; Y="\e[1;33m"; }
-TESTED_ON="tested on: ${W}Ubuntu 12.04 & 14.04${Z} and ${W}Debian 7${Z}"
+TESTED_ON="tested on: ${W}Ubuntu 12.04 & 14.04${Z} and ${W}Debian 7.8${Z}"
 REPORT_BACK="${W}Please report back${Z} about successes and failures at <https://github.com/assarbad/build-asuswrt-merlin> (e.g. by opening a ticket)"
 TOOLCHAIN_BINARIES="mipsel-linux-addr2line mipsel-linux-ar mipsel-linux-as mipsel-linux-c++ mipsel-linux-cc mipsel-linux-c++filt mipsel-linux-cpp mipsel-linux-g++ mipsel-linux-gcc mipsel-linux-gcc-4.2.4 mipsel-linux-gcov mipsel-linux-gprof mipsel-linux-ld mipsel-linux-nm mipsel-linux-objcopy mipsel-linux-objdump mipsel-linux-ranlib mipsel-linux-readelf mipsel-linux-size mipsel-linux-strings mipsel-linux-strip"
 ROUTERMDL=${1}

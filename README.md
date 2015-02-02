@@ -2,7 +2,7 @@
 
 Helper scripts to build [RMerl/asuswrt-merlin](https://github.com/RMerl/asuswrt-merlin) without much extra typing.
 
-* Backlink to [Compile Firmware from source using Ubuntu](https://github.com/RMerl/asuswrt-merlin/wiki/Compiling-from-source-using-a-Debian-based-Linux-Distribution)
+* Backlink to [Compiling from source using a Debian based Linux Distribution](https://github.com/RMerl/asuswrt-merlin/wiki/Compiling-from-source-using-a-Debian-based-Linux-Distribution)
 * Backlink to [Compile Firmware from source using Linux Mint](https://github.com/RMerl/asuswrt-merlin/wiki/Compile-Firmware-from-source-using-Linux-Mint)
 * Backlink to [Compile firmware from source using Ubuntu](https://github.com/RMerl/asuswrt-merlin/wiki/Compile-Firmware-from-source-using-Ubuntu)
 
