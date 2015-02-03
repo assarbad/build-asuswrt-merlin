@@ -14,6 +14,12 @@ It can be run in two modes: with or without `sudo` involved. With `sudo` it will
 
 If you are running inside a [`tmux`](http://tmux.sourceforge.net/) pane, this will also pipe the output into a log file (see _Environment variables_).
 
+### Supported distributions
+
+* Debian 7.x (tested on 7.8)
+* Ubuntu 12.04 and above (tested on 12.04 and 14.04)
+* Linux Mint 13 and above (experimental, untested)
+
 ## Syntax
 
 * Unprivileged: `./debian-build-image <router-model> [path-to-asuswrt-merlin]`
@@ -60,7 +66,7 @@ In order to have the script install all the prerequisites using `apt-get`, use t
 
 Please note that this requires you to be a sudoer. Usually that means you need to be a member of the group `sudo` on `.deb`-based distros or `wheel` on `.rpm`-based distros.
 
-## Usage on Ubuntu
+## Usage on Debian, Linux Mint and Ubuntu
 
 ### Preparation
 
