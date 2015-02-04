@@ -16,6 +16,18 @@ APTI="apt-get --no-install-recommends install"
 BASEDIR=${2:-$CURRABSPATH}
 CURRDATE=$(date +'%Y-%m-%dT%H-%M-%S')
 _TMUX_LOG="$BASEDIR/tmux-${CURRDATE}.log"
+let TIME_START=$(date +%s)
+show_time_diff()
+{
+	local START=$1
+	local END=$2
+	local MSG=$3
+	[[ -n "$MSG" ]] || MSG="Runtime: %s"
+	local DIFF=$((END-START))
+	local DIFF_MIN=$((DIFF/60))
+	local DIFF_SEC=$((DIFF%60))
+	printf "$MSG\n" $(printf "%d:%02d" "$DIFF_MIN" "$DIFF_SEC")
+}
 help_syntax() # show a brief help screen
 {
 	echo -e "${W}SYNTAX:${Z} ${0##*/} <router-model> [path]\n"
@@ -46,6 +58,7 @@ cleanup() # turn off tmux logging if enabled before, any other common cleanup ta
 			sed -i.bak -r 's#'"$BASEDIR"'#\$BASEDIR#g' "$_TMUX_LOG" && rm -f "${_TMUX_LOG}.bak"
 		fi
 	fi
+	show_time_diff $TIME_START $(date +%s)
 }
 enable_tmux_logging()
 {
