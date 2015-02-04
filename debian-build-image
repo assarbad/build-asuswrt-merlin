@@ -242,4 +242,4 @@ make -C "$BASEDIR/release/$MKBASE" "TOOLCHAIN=$TOOLCHAIN" clean > /dev/null 2>&1
 echo -e "${Y}NOTE:${Z} running ${W}make -C release/$MKBASE ${ROUTERMDL,,}${Z}"
 make -C "$BASEDIR/release/$MKBASE" "TOOLCHAIN=$TOOLCHAIN" ${ROUTERMDL,,}
 echo "Your image can be found here:"
-(cd "$BASEDIR" && for i in release/$MKBASE/image/*.trx; do echo -e "\t${G}$i${Z}; done)
+(cd "$BASEDIR" && for i in release/$MKBASE/image/*.trx; do echo -e "\t${G}$i${Z}"; done)
