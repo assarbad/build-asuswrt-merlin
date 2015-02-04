@@ -23,10 +23,11 @@ help_syntax() # show a brief help screen
 \t* ${W}path${Z} is a directory containing the asuswrt-merlin sources\n\
 \t  (default is the directory with this script: $CURRABSPATH)\n\
 \t* ${W}router-model${Z} is the model name you'd pass to make\n\
-\t  (e.g. rt-n66u, rt-ac66u etc)\n"
+\t  (e.g. rt-n66u, rt-ac66u etc, see ${W}README.md${Z})\n"
 	echo -e "Variables:\n\
 \t${W}USE_SUDO${Z} if set will 'install' and use tools in /opt, but requires ${W}sudo${Z}.\n\
-\t${W}FORCE_UNSUPPORTED${Z} if set will proceed even if the system doesn't match prerequisites 100%."
+\t${W}FORCE_UNSUPPORTED${Z} if set will proceed even if the system doesn't match prerequisites 100%.\n\
+\t${W}TMUX_PANE${Z} if unset/empty will suppress logging inside a Tmux session."
 }
 fatal() # show the given error, include the help screen if requested and then exit with status 1
 {
@@ -145,22 +146,42 @@ tell_missing_packages()
 enable_tmux_logging
 [[ -n "$ROUTERMDL" ]] || fatal help "you have to ${W}give the router model${Z} to build for."
 # Match the router model to find the correct base directory for make
+# To find supported router models:
+#   grep -hoP 'RT-(AC|N)\d+[URW]*(_V\d+)?' release/src-rt*/target.mak|sort -u
+OLD_ROUTERMDL=${ROUTERMDL^^}
 case ${ROUTERMDL^^} in
 	-P|--PREREQ*)
-		INSTALL_PREREQ=1
-		;;
+		INSTALL_PREREQ=1;;
+	# release/src-rt
 	RT-N16)
-		MKBASE="src-rt"
-		;;
-	RT-N66|RT-N66[URW]|RT-AC66|RT-AC66[URW])
-		MKBASE="src-rt-6.x"
-		;;
-	RT-AC56|RT-AC56[URW]|RT-AC68|RT-AC68[URW]) # RT-AC87[URW] ???
-		MKBASE="src-rt-6.x.4708"
-		;;
-	*) fatal "unrecognized router model ${W}$ROUTERMDL${Z}. Either the command line or this script needs fixing."
-		;;
+		MKBASE="src-rt";;
+	# release/src-rt-6.x
+	RT-AC66|RT-AC66[URW])
+		ROUTERMDL="RT-AC66U"
+		MKBASE="src-rt-6.x";;
+	RT-N66|RT-N66[URW])
+		ROUTERMDL="RT-N66U"
+		MKBASE="src-rt-6.x";;
+	# release/src-rt-6.x.4708
+	RT-AC56|RT-AC56[URW])
+		ROUTERMDL="RT-AC56U"
+		MKBASE="src-rt-6.x.4708";;
+	RT-AC68|RT-AC68[URW])
+		ROUTERMDL="RT-AC68U"
+		MKBASE="src-rt-6.x.4708";;
+	RT-AC68_V2|RT-AC68[URW]_V2)
+		ROUTERMDL="RT-AC68U_V2"
+		MKBASE="src-rt-6.x.4708";;
+	RT-AC69|RT-AC69[URW])
+		ROUTERMDL="RT-AC69U"
+		MKBASE="src-rt-6.x.4708";;
+	RT-AC87|RT-AC87[URW])
+		ROUTERMDL="RT-AC87U"
+		MKBASE="src-rt-6.x.4708";;
+	*) # anything unmatched
+		fatal "unrecognized router model ${W}$ROUTERMDL${Z}. Either the command line or this script needs fixing.";;
 esac
+[[ "${OLD_ROUTERMDL^^}" == "${ROUTERMDL^^}" ]] || { echo -e "${W}INFO${Z}: your router model choice ${W}${OLD_ROUTERMDL^^}${Z} firmware-compatible to ${ROUTERMDL^^}. Setting target for ${W}make${Z} to ${W}${ROUTERMDL^^}${Z}."; }
 # Check whether this is the asuswrt-merlin source directory ...
 [[ -f "$BASEDIR/README-merlin.txt" ]] || fatal help "$BASEDIR is expected to contain a file ${W}README-merlin.txt${Z}."
 check_runtime_requirements
@@ -190,8 +211,8 @@ if [[ -n "$USE_SUDO" ]]; then
 else
 	# Cheapo version of "installing" the toolchain to /opt/brcm
 	echo -e "${Y}NOTE:${Z} looking for files in which to fix hardcoded path to toolchain"
-	grep -RP '=\s*/opt/brcm/hndtools-mipsel-uclibc/' "$BASEDIR/release/" 2>/dev/null|cut -d : -f 1|sort -u|while read fname; do
-		[[ -e "${fname}.BAK-build-image" ]] && { echo -e "${Y}NOTE:${Z} skipping fixup of ${fname} (prior run detected)"; continue; }
+	grep -P '=\s*/opt/brcm/hndtools-mipsel-uclibc/' $(find "$BASEDIR/release/" -type f -iname '*makefile' -o -name defconfig) 2>/dev/null|cut -d : -f 1|sort -u|while read fname; do
+		[[ -e "${fname}.BAK-build-image" ]] && { echo -e "${W}INFO:${Z} skipping fixup of ${fname} (prior run detected)"; continue; }
 		[[ "x${fname//.BAK-build-image/}" == "x$fname" ]] || continue # skip backup files
 		echo -e "Rebasing paths in: ${G}${fname}${Z}"
 		sed -i.BAK-build-image 's#/opt/brcm/hndtools-mipsel-uclibc/#'"$BASEDIR/tools/brcm/hndtools-mipsel-uclibc/"'#g' "$fname" && grep --color=auto "$BASEDIR/tools/brcm/hndtools-mipsel-uclibc/" "$fname"
