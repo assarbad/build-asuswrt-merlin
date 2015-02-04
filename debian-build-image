@@ -41,7 +41,10 @@ cleanup() # turn off tmux logging if enabled before, any other common cleanup ta
 	if [[ -n "$TMUX_PANE" ]]; then
 		echo -e "\n${Y}CLEANUP${Z}: turning off tmux logging ($_TMUX_LOG)"
 		tmux pipe-pane -t $TMUX_PANE
-		# TODO: cleanup of $_TMUX_LOG (remove ANSI escape sequences as well as absolute paths where we know a variable)
+		if [[ -f "$_TMUX_LOG" ]]; then
+			sed -i.nocolor -r "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g" "$_TMUX_LOG" && rm -f "${_TMUX_LOG}.nocolor"
+			sed -i.bak -r 's#'"$BASEDIR"'#\$BASEDIR#g' "$_TMUX_LOG" && rm -f "${_TMUX_LOG}.bak"
+		fi
 	fi
 }
 enable_tmux_logging()
@@ -144,13 +147,14 @@ tell_missing_packages()
 	fi
 }
 ## MAIN
-enable_tmux_logging
 [[ -n "$ROUTERMDL" ]] || fatal help "you have to ${W}give the router model${Z} to build for."
 # Match the router model to find the correct base directory for make
 # To find supported router models:
 #   grep -hoP 'RT-(AC|N)\d+[URW]*(_V\d+)?' release/src-rt*/target.mak|sort -u
 OLD_ROUTERMDL=${ROUTERMDL^^}
 case ${ROUTERMDL^^} in
+	-H|--HELP)
+		help_syntax; exit 0;;
 	-P|--PREREQ*)
 		INSTALL_PREREQ=1;;
 	# release/src-rt
@@ -182,6 +186,7 @@ case ${ROUTERMDL^^} in
 	*) # anything unmatched
 		fatal "unrecognized router model ${W}$ROUTERMDL${Z}. Either the command line or this script needs fixing.";;
 esac
+enable_tmux_logging
 [[ "${OLD_ROUTERMDL^^}" == "${ROUTERMDL^^}" ]] || { echo -e "${W}INFO${Z}: your router model choice ${W}${OLD_ROUTERMDL^^}${Z} is firmware-compatible to ${ROUTERMDL^^}. Setting target for ${W}make${Z} to ${W}${ROUTERMDL^^}${Z}."; }
 unset OLD_ROUTERMDL
 # Check whether this is the asuswrt-merlin source directory ...
@@ -236,3 +241,5 @@ echo -e "${Y}NOTE:${Z} running ${W}make -C release/$MKBASE clean${Z}"
 make -C "$BASEDIR/release/$MKBASE" "TOOLCHAIN=$TOOLCHAIN" clean > /dev/null 2>&1
 echo -e "${Y}NOTE:${Z} running ${W}make -C release/$MKBASE ${ROUTERMDL,,}${Z}"
 make -C "$BASEDIR/release/$MKBASE" "TOOLCHAIN=$TOOLCHAIN" ${ROUTERMDL,,}
+echo "Your image can be found here:"
+(cd "$BASEDIR" && for i in release/$MKBASE/image/*.trx; do echo -e "\t${G}$i${Z}; done)
