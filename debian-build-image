@@ -41,6 +41,7 @@ cleanup() # turn off tmux logging if enabled before, any other common cleanup ta
 	if [[ -n "$TMUX_PANE" ]]; then
 		echo -e "\n${Y}CLEANUP${Z}: turning off tmux logging ($_TMUX_LOG)"
 		tmux pipe-pane -t $TMUX_PANE
+		# TODO: cleanup of $_TMUX_LOG (remove ANSI escape sequences as well as absolute paths where we know a variable)
 	fi
 }
 enable_tmux_logging()
@@ -181,7 +182,8 @@ case ${ROUTERMDL^^} in
 	*) # anything unmatched
 		fatal "unrecognized router model ${W}$ROUTERMDL${Z}. Either the command line or this script needs fixing.";;
 esac
-[[ "${OLD_ROUTERMDL^^}" == "${ROUTERMDL^^}" ]] || { echo -e "${W}INFO${Z}: your router model choice ${W}${OLD_ROUTERMDL^^}${Z} firmware-compatible to ${ROUTERMDL^^}. Setting target for ${W}make${Z} to ${W}${ROUTERMDL^^}${Z}."; }
+[[ "${OLD_ROUTERMDL^^}" == "${ROUTERMDL^^}" ]] || { echo -e "${W}INFO${Z}: your router model choice ${W}${OLD_ROUTERMDL^^}${Z} is firmware-compatible to ${ROUTERMDL^^}. Setting target for ${W}make${Z} to ${W}${ROUTERMDL^^}${Z}."; }
+unset OLD_ROUTERMDL
 # Check whether this is the asuswrt-merlin source directory ...
 [[ -f "$BASEDIR/README-merlin.txt" ]] || fatal help "$BASEDIR is expected to contain a file ${W}README-merlin.txt${Z}."
 check_runtime_requirements
