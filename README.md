@@ -31,6 +31,8 @@ You can leave out the `path-to-asuswrt-merlin` argument and the script will chec
 
 ### Supported router models
 
+The \*R and \*W variants of the routers are also supported. R is for retail versions and W for white models. The firmware is the same. The router name can be given in upper or lower case and you can leave out the trailing U, R or W.
+
 #### MIPS-based routers
 * RT-N16
 * RT-N66U
@@ -41,8 +43,6 @@ You can leave out the `path-to-asuswrt-merlin` argument and the script will chec
 * RT-AC68U & RT-AC68U\_V2
 * RT-AC69U
 * RT-AC87U
-
-The \*R and \*W variants of the routers are also supported. R is for retail versions and W for white models. The firmware is the same. The router name can be given in upper or lower case and you can leave out the trailing U, R or W.
 
 ### Environment variables
 
