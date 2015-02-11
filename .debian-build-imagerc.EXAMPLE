@@ -1,0 +1,51 @@
+export TMUX_PANE=''
+#ROUTERMDL="RT-AC56U"
+
+hook_unknown_router() # $1 = <router-model>
+{
+	echo "[hook] user-supplied router model not recognized: '$1'"
+	return 0
+}
+
+hook_override_model() # no arguments
+{
+	# Inspect OLD_ROUTERMDL, ROUTERMDL, ARCH and change them as needed
+	echo "OLD_ROUTERMDL=${OLD_ROUTERMDL}"
+	echo "ROUTERMDL=${ROUTERMDL}"
+	echo "ARCH=${ARCH}"
+}
+
+hook_ubuntu_extras() # no arguments
+{
+	echo "Additional Ubuntu fixups"
+}
+
+hook_pre_fixups() # no arguments, check if USE_SUDO is non-empty
+{
+	echo "Fixup steps before"
+}
+
+hook_post_fixups() # no arguments, check if USE_SUDO is non-empty
+{
+	echo "Fixup steps after"
+}
+
+hook_suppress_missing_bin() # $1 = <name-of-binary>
+{
+	return 0 # to suppress, nonzero to propagate failure and throw a fatal error
+}
+
+hook_pre_clean() # $1 = <path-to-makefile-base-folder>
+{
+	echo "Called before 'make clean' is invoked"
+}
+
+hook_pre_make() # $1 = <path-to-makefile-base-folder>
+{
+	echo "Called before 'make <router>' is invoked"
+}
+
+hook_post_make() # $1 = <path-to-makefile-base-folder>
+{
+	echo "Called after make is invoked"
+}

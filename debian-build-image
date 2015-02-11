@@ -11,6 +11,7 @@ pushd $(dirname $0) > /dev/null; CURRABSPATH=$(readlink -nf "$(pwd)"); popd > /d
 TESTED_ON="tested on: ${W}Ubuntu 12.04 & 14.04${Z} and ${W}Debian 7.8${Z}"
 REPORT_BACK="${W}Please report back${Z} about successes and failures at <https://github.com/assarbad/build-asuswrt-merlin> (e.g. by opening a ticket)"
 TOOLCHAIN_BINARIES="mipsel-linux-addr2line mipsel-linux-ar mipsel-linux-as mipsel-linux-c++ mipsel-linux-cc mipsel-linux-c++filt mipsel-linux-cpp mipsel-linux-g++ mipsel-linux-gcc mipsel-linux-gcc-4.2.4 mipsel-linux-gcov mipsel-linux-gprof mipsel-linux-ld mipsel-linux-nm mipsel-linux-objcopy mipsel-linux-objdump mipsel-linux-ranlib mipsel-linux-readelf mipsel-linux-size mipsel-linux-strings mipsel-linux-strip"
+[[ ${1^^} =~ ^(-P|--PREREQ[A-Z]*)$ ]] && { INSTALL_PREREQ=1; shift; ROUTERMDL="${1}"; }
 ROUTERMDL=${1}
 APTI="apt-get --no-install-recommends install"
 BASEDIR=${2:-$CURRABSPATH}
@@ -87,14 +88,23 @@ install_required_packages()
 	echo -e "${W}INSTALLATION OF PREREQUISITE PACKAGES"
 	echo -e     "=====================================${Z}"
 	[[ $UID -eq 0 ]] || { echo -e "${Y}NOTE:${Z} This requires ${W}sudo${Z}, unless you simulate the installation only."; SUDO=sudo; }
+	if [[ "$(dpkg --print-architecture)" == "amd64" ]]; then
+		if [[ $(dpkg --print-foreign-architectures) =~ i386 ]]; then
+			DPKG_ADD_ARCH="true"
+		else
+			DPKG_ADD_ARCH="dpkg --add-architecture i386"
+			echo -e "${Y}NOTE:${Z} you are running a $(dpkg --print-architecture) system, but we need libelf1:i386. So we will need to run\n\t${W}${SUDO+$SUDO }${DPKG_ADD_ARCH}${Z}\n... prior to the ${W}apt-get${Z} invocation. This is just to inform you about the fact.\n"
+		fi
+		REQ_PKGS="${REQ_PKGS//libelf1/libelf1:i386}" # we need the 32-bit package, though
+	fi
 	echo -e "The command to be run is (beware of line breaks in overlong lines!):\n\n${W}${SUDO+$SUDO }$APTI ${Z}${REQ_PKGS}\n"
 	echo -ne "Do you want to continue? ([${W}y${Z}]es/[${W}N${Z}]o/[${W}s${Z}]imulate)"
 	read -p " " ans
 	[[ $ans =~ ^[YySs]$ ]] || { echo -e "\n${Y}NOTE:${Z} aborted by user."; exit 1; }
 	if [[ $ans =~ ^[Ss]$ ]]; then
-		( set -x; $APTI -s ${REQ_PKGS} )
+		( set -x; $DPKG_ADD_ARCH && $APTI -s ${REQ_PKGS} )
 	else
-		( set -x; $SUDO $APTI ${REQ_PKGS} )
+		( set -x; $SUDO $SHELL -c "$DPKG_ADD_ARCH && $APTI ${REQ_PKGS}" )
 	fi
 	exit 0
 }
@@ -106,11 +116,10 @@ check_runtime_requirements()
 {
 	# Does this look like a Debian?
 	[[ -e "/etc/debian_version" ]] || fatal "this script expects a Debian flavor. It has been ${TESTED_ON}."
-	type lsb_release > /dev/null 2>&1 || fatal "${W}lsb_release{$Z} is expected to be installed. That is normally the case on Debian and Ubuntu anyway."
+	[[ -n $(type -t lsb_release) ]] || fatal "${W}lsb_release{$Z} is expected to be installed. That is normally the case on Debian and Ubuntu anyway."
 	OS_REL=$(lsb_release -sr|cut -d . -f 1)
 	# All those packages are required according to the asuswrt-merlin docs (exceptions: I replaced g++ and make by build-essential, libncurses-dev => libncurses5-dev)
 	PREREQ_PKGS=(autoconf automake bash bison build-essential bzip2 diffutils file flex gawk gcc-multilib gettext gperf groff-base libncurses5-dev libexpat1-dev libslang2 libssl-dev libtool libxml-parser-perl patch perl pkg-config python sed shtool tar texinfo unzip zlib1g zlib1g-dev)
-	# Set a default value
 	# Figure out the Debian flavor
 	case $(lsb_release -si) in
 		Debian)
@@ -133,6 +142,8 @@ check_runtime_requirements()
 	esac
 	# On x86_64 we also need two additional packages
 	[[ "$(uname -m)" == "x86_64" ]] && PREREQ_PKGS+=(lib32z1-dev lib32stdc++6)
+	# For ARM routers add libelf1
+	[[ "$ARCH" == "ARM" ]] && PREREQ_PKGS+=(libelf1)
 }
 tell_missing_packages()
 {
@@ -159,6 +170,13 @@ tell_missing_packages()
 		echo -e "${R}ERROR:${Z} ${PREREQ_MISSING_NUM} required packages are missing on your system:\n\t${Z} ${PREREQ_MISSING[*]}\n"
 	fi
 }
+## HOOK INIT
+[[ -e "${CURRABSPATH%/}/.${0##*/}rc" ]] && { source "${CURRABSPATH%/}/.${0##*/}rc" || fatal "'${CURRABSPATH%/}/.${0##*/}rc' exists but could not be sourced successfully"; }
+function_exists()
+{
+	declare -f $1 > /dev/null 2>&1
+	# use exit status from declare
+}
 ## MAIN
 [[ -n "$ROUTERMDL" ]] || fatal help "you have to ${W}give the router model${Z} to build for."
 # Match the router model to find the correct base directory for make
@@ -168,8 +186,6 @@ OLD_ROUTERMDL=${ROUTERMDL^^}
 case ${ROUTERMDL^^} in
 	-H|--HELP)
 		help_syntax; exit 0;;
-	-P|--PREREQ*)
-		INSTALL_PREREQ=1;;
 	# release/src-rt
 	RT-N16)
 		MKBASE="src-rt";;
@@ -197,9 +213,26 @@ case ${ROUTERMDL^^} in
 		ROUTERMDL="RT-AC87U"
 		MKBASE="src-rt-6.x.4708";;
 	*) # anything unmatched
-		fatal "unrecognized router model ${W}$ROUTERMDL${Z}. Either the command line or this script needs fixing.";;
+		if function_exists hook_unknown_router; then
+			hook_unknown_router "${ROUTERMDL}"
+		else
+			fatal "unrecognized router model ${W}$ROUTERMDL${Z}. Either the command line or this script needs fixing [base]."
+		fi;;
+esac
+case ${ROUTERMDL^^} in
+	RT-N16|RT-AC66U|RT-N66U)
+		ARCH="MIPS";;
+	RT-AC56U|RT-AC68U|RT-AC68U_V2|RT-AC69U|RT-AC87U)
+		ARCH="ARM";;
+	*)
+		if function_exists hook_unknown_router; then
+			hook_unknown_router "${ROUTERMDL}"
+		else
+			fatal "unrecognized router model ${W}$ROUTERMDL${Z}. Either the command line or this script needs fixing [arch]."
+		fi;;
 esac
 enable_tmux_logging
+function_exists hook_override_model && hook_override_model
 [[ "${OLD_ROUTERMDL^^}" == "${ROUTERMDL^^}" ]] || { echo -e "${W}INFO${Z}: your router model choice ${W}${OLD_ROUTERMDL^^}${Z} is firmware-compatible to ${ROUTERMDL^^}. Setting target for ${W}make${Z} to ${W}${ROUTERMDL^^}${Z}."; }
 unset OLD_ROUTERMDL
 # Check whether this is the asuswrt-merlin source directory ...
@@ -208,7 +241,7 @@ check_runtime_requirements
 tell_missing_packages
 # Did the user ask to install prerequisites instead?
 [[ -n "$INSTALL_PREREQ" ]] && install_required_packages "${PREREQ_MISSING[*]}"
-((PREREQ_MISSING_NUM > 0)) && fatal "can't continue because of missing packages.\n\nPlease use:\n\t${W}${0##*/} --prereq${Z}\nor:\n\t${W}$APTI${Z} ${PREREQ_MISSING[*]}\nto install missing packages."
+((PREREQ_MISSING_NUM > 0)) && fatal "can't continue because of missing packages.\n\nPlease use:\n\t${W}${0##*/} --prereq $ROUTERMDL${Z}\nor:\n\t${W}$APTI${Z} ${PREREQ_MISSING[*]}\nto install missing packages."
 # Special steps required on Ubuntu newer than or equal to 13.10
 if [[ -n "$UBUNTU_EXTRAS" ]]; then
 	echo -e "${Y}NOTE:${Z} Attempting extra fixes for Ubuntu >= 13.10 and similar"
@@ -219,40 +252,56 @@ if [[ -n "$UBUNTU_EXTRAS" ]]; then
 	( cd "$BASEDIR/release/src/router/libdaemon" && aclocal ) || fatal "failed to fix broken configure script for libdaemon"
 	# fix broken configure script for libxml2
 	( cd "$BASEDIR/release/src/router/libxml2" && sed -i.BAK-build-image s/^AM_C_PROTOTYPES/#AM_C_PROTOTYPES/g configure.in && aclocal ) || fatal "failed to fix broken configure script for libxml2"
+	function_exists hook_ubuntu_extras && hook_ubuntu_extras
 fi
 # Clean up leftovers
 echo -e "${Y}NOTE:${Z} removing excess files"
 rm -f "$BASEDIR/release/src/router/".#preconfigure*
 # Prepare the PATH environment variable and fix up hardcoded paths contained in certain files)
+[[ "$ARCH" == "ARM" ]] && USE_SUDO='' # no global paths needed, so no symlinking needed
+function_exists hook_pre_fixups && hook_pre_fixups
 if [[ -n "$USE_SUDO" ]]; then
 	echo -e "${Y}NOTE:${Z} making toolchain available in /opt"
 	sudo ln -sf "$BASEDIR/tools/brcm" /opt/brcm
 	export TOOLCHAIN="/opt/brcm/hndtools-mipsel-uclibc"
 else
 	# Cheapo version of "installing" the toolchain to /opt/brcm
-	echo -e "${Y}NOTE:${Z} looking for files in which to fix hardcoded path to toolchain"
-	grep -P '=\s*/opt/brcm/hndtools-mipsel-uclibc/' $(find "$BASEDIR/release/" -type f -iname '*makefile' -o -name defconfig) 2>/dev/null|cut -d : -f 1|sort -u|while read fname; do
-		[[ -e "${fname}.BAK-build-image" ]] && { echo -e "${W}INFO:${Z} skipping fixup of ${fname} (prior run detected)"; continue; }
-		[[ "x${fname//.BAK-build-image/}" == "x$fname" ]] || continue # skip backup files
-		echo -e "Rebasing paths in: ${G}${fname}${Z}"
-		sed -i.BAK-build-image 's#/opt/brcm/hndtools-mipsel-uclibc/#'"$BASEDIR/tools/brcm/hndtools-mipsel-uclibc/"'#g' "$fname" && grep --color=auto "$BASEDIR/tools/brcm/hndtools-mipsel-uclibc/" "$fname"
-	done
-	# Instead of installing, we override some of the paths used in the build process
-	export TOOLCHAIN="$BASEDIR/tools/brcm/hndtools-mipsel-uclibc" # used in preconfigure scripts
+	case "$ARCH" in
+	ARM)
+		# Instead of installing, we override some of the paths used in the build process
+		export TOOLCHAIN="$BASEDIR/release/$MKBASE/toolchains/hndtools-arm-linux-2.6.36-uclibc-4.5.3" # used in preconfigure scripts
+		;;
+	MIPS)
+		echo -e "${Y}NOTE:${Z} looking for files in which to fix hardcoded path to toolchain"
+		grep -P '=\s*/opt/brcm/hndtools-mipsel-uclibc/' $(find "$BASEDIR/release/" -type f -iname '*makefile' -o -name defconfig) 2>/dev/null|cut -d : -f 1|sort -u|while read fname; do
+			[[ -e "${fname}.BAK-build-image" ]] && { echo -e "${W}INFO:${Z} skipping fixup of ${fname} (prior run detected)"; continue; }
+			[[ "x${fname//.BAK-build-image/}" == "x$fname" ]] || continue # skip backup files
+			echo -e "Rebasing paths in: ${G}${fname}${Z}"
+			sed -i.BAK-build-image 's#/opt/brcm/hndtools-mipsel-uclibc/#'"$BASEDIR/tools/brcm/hndtools-mipsel-uclibc/"'#g' "$fname" && grep --color=auto "$BASEDIR/tools/brcm/hndtools-mipsel-uclibc/" "$fname"
+		done
+		# Instead of installing, we override some of the paths used in the build process
+		export TOOLCHAIN="$BASEDIR/tools/brcm/hndtools-mipsel-uclibc" # used in preconfigure scripts
+		;;
+	esac
 	# Set the trap to also revert the changes we made
 	trap cleanup_and_revert EXIT
 fi
+function_exists hook_post_fixups && hook_post_fixups
 # Add the toolchain into the PATH
 export PATH="$PATH:$TOOLCHAIN/bin"
 # Check that the relevant tools execute from there
 echo -e "${Y}NOTE:${Z} invoking each of the required programs to detect possible issues"
 for i in $TOOLCHAIN_BINARIES; do
-	$i --version > /dev/null 2>&1 || fatal "failed to execute $i"
+	$i --version > /dev/null 2>&1 || \
+		{ function_exists hook_suppress_missing_bin && hook_suppress_missing_bin "$i" || true; [[ $? -eq 0 ]] || fatal "failed to execute $i"; }
 done
 # Do the make
+function_exists hook_pre_clean && hook_pre_clean "$BASEDIR/release/$MKBASE"
 echo -e "${Y}NOTE:${Z} running ${W}make -C release/$MKBASE clean${Z}"
 make -C "$BASEDIR/release/$MKBASE" "TOOLCHAIN=$TOOLCHAIN" clean > /dev/null 2>&1
+function_exists hook_pre_make && hook_pre_make "$BASEDIR/release/$MKBASE"
 echo -e "${Y}NOTE:${Z} running ${W}make -C release/$MKBASE ${ROUTERMDL,,}${Z}"
 make -C "$BASEDIR/release/$MKBASE" "TOOLCHAIN=$TOOLCHAIN" ${ROUTERMDL,,}
+function_exists hook_post_make && hook_post_make "$BASEDIR/release/$MKBASE"
 echo "Your image can be found here:"
 (cd "$BASEDIR" && for i in release/$MKBASE/image/*.trx; do echo -e "\t${G}$i${Z}"; done)
