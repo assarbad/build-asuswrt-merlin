@@ -83,6 +83,7 @@ cleanup_and_revert() # reverts parts of the effects of this script, then calls c
 }
 install_required_packages()
 {
+	((PREREQ_MISSING_NUM > 0)) || { echo -e "${Y}NOTE:${Z} no missing package dependencies were found."; return 0; }
 	local REQ_PKGS="${REQ_PKGS[*]}"
 	[[ -n "$1" ]] && REQ_PKGS="$1"
 	echo -e "${W}INSTALLATION OF PREREQUISITE PACKAGES"
@@ -106,9 +107,6 @@ install_required_packages()
 	else
 		( set -x; $SUDO $SHELL -c "$DPKG_ADD_ARCH && apt-get update && $APTI ${REQ_PKGS}" ) || fatal "an error occured when trying to install missing package dependencies."
 		PREREQ_MISSING_NUM=0
-		echo -ne "\nDo you want to proceed with the firmware build now? ([${W}y${Z}]es/[${W}N${Z}]o)"
-		read -p " " ans
-		[[ $ans =~ ^[Yy]$ ]] || { echo -e "\n${Y}INFO:${Z} aborted by user."; exit 0; }
 	fi
 }
 check_or_fail_os_prereq()
@@ -147,7 +145,7 @@ check_runtime_requirements()
 	[[ "$(uname -m)" == "x86_64" ]] && PREREQ_PKGS+=(lib32z1-dev lib32stdc++6)
 	# For ARM routers add libelf1
 	if [[ "$ARCH" == "ARM" ]]; then
-		[[ "$(dpkg --print-architecture)" == "amd64" ]] && PREREQ_PKGS+=(libelf1:i386) || PREREQ_PKGS+=(libelf1)
+		[[ "$(dpkg --print-architecture)" == "amd64" ]] && PREREQ_PKGS+=(libelf1:i386 libxml2-dev) || PREREQ_PKGS+=(libelf1 libxml2-dev)
 	fi
 }
 tell_missing_packages()
@@ -156,13 +154,13 @@ tell_missing_packages()
 	if [[ ${PREREQ_PKGS[*]} =~ :i386 ]] && [[ "$(dpkg --print-architecture)" == "amd64" ]]; then
 		if [[ ! $(dpkg --print-foreign-architectures) =~ i386 ]]; then
 			echo -e "${Y}NOTE:${Z} trying to find the list of missing packages may fail or yield an incomplete list.\n  The reason is that you require a package from a foreign architecture not installed on your system: i386.\n  You can still run this script with the ${W}--prereq${Z} option to fix missing dependencies."
+			NEW_PREREQ_PKGS=()
+			# Weed out packages which would cause errors
+			for r in ${PREREQ_PKGS[*]}; do
+				[[ $r =~ :i386 ]] && OTHER_ARCH_PREREQ_PKGS+=($r) || NEW_PREREQ_PKGS+=($r)
+			done
+			PREREQ_PKGS=(${NEW_PREREQ_PKGS[*]})
 		fi
-		NEW_PREREQ_PKGS=()
-		# Weed out packages which would cause errors
-		for r in ${PREREQ_PKGS[*]}; do
-			[[ $r =~ :i386 ]] && OTHER_ARCH_PREREQ_PKGS+=($r) || NEW_PREREQ_PKGS+=($r)
-		done
-		PREREQ_PKGS=(${NEW_PREREQ_PKGS[*]})
 	fi
 	# Find the packages which are already installed, so we can remove them from the list of required packages
 	local INST_ALREADY=($($APTI -s ${PREREQ_PKGS[*]}|awk '/is already the newest version\.$/ {print $1}'))
@@ -182,8 +180,8 @@ tell_missing_packages()
 		}
 	EOF
 	)); do echo "$pkg"; done|sort -u))
-	PREREQ_MISSING+=(${OTHER_ARCH_PREREQ_PKGS[*]})
-	PREREQ_MISSING_NUM=${#PREREQ_MISSING[@]}
+	[[ ${#OTHER_ARCH_PREREQ_PKGS[@]} -gt 0 ]] && PREREQ_MISSING+=(${OTHER_ARCH_PREREQ_PKGS[*]})
+	PREREQ_MISSING_NUM=${#PREREQ_MISSING[*]}
 	if ((PREREQ_MISSING_NUM > 0)); then
 		echo -e "${R}ERROR:${Z} ${PREREQ_MISSING_NUM} required packages are missing on your system:\n\t${Z} ${PREREQ_MISSING[*]}\n"
 	fi
@@ -260,6 +258,11 @@ tell_missing_packages
 # Did the user ask to install prerequisites instead?
 [[ -n "$INSTALL_PREREQ" ]] && install_required_packages "${PREREQ_MISSING[*]}"
 ((PREREQ_MISSING_NUM > 0)) && fatal "can't continue because of missing packages.\n\nPlease use:\n\t${W}${0##*/} --prereq $ROUTERMDL${Z}\nor:\n\t${W}$APTI${Z} ${PREREQ_MISSING[*]}\nto install missing packages."
+if [[ -n "$INSTALL_PREREQ" ]]; then
+	echo -ne "\nDo you want to proceed with the firmware build now? ([${W}y${Z}]es/[${W}N${Z}]o)"
+	read -p " " ans
+	[[ $ans =~ ^[Yy]$ ]] || { echo -e "\n${Y}INFO:${Z} aborted by user."; exit 0; }
+fi
 # Special steps required on Ubuntu newer than or equal to 13.10
 if [[ -n "$UBUNTU_EXTRAS" ]]; then
 	echo -e "${Y}NOTE:${Z} Attempting extra fixes for Ubuntu >= 13.10 and similar"
