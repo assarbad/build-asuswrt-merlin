@@ -8,7 +8,7 @@ Helper scripts to build [RMerl/asuswrt-merlin](https://github.com/RMerl/asuswrt-
 
 ## Summary
 
-Last tested on `master` from RMerl/asuswrt-merlin as of 2015-02-02. The script takes care of the steps mentioned above for Ubuntu 13.10 and newer. In addition it does fixups to the source tree which ensure that it can run without superuser rights as long as the user makes sure all the packages are installed. It will also check for the packages being installed and bail out with a meaningful error message if not.
+Last tested on `master` from RMerl/asuswrt-merlin as of 2015-02-11. The script takes care of the steps mentioned above for Ubuntu 13.10 and newer. In addition it does fixups to the source tree which ensure that it can run without superuser rights as long as the user makes sure all the packages are installed. It will also check for the packages being installed and bail out with a meaningful error message if not.
 
 It can be run in two modes: with or without `sudo` involved. With `sudo` it will use the symbolic link method inside `/opt`, whereas without it will modify the files in the source tree to adjust hardcoded paths.
 
@@ -20,6 +20,8 @@ If you are running inside a [`tmux`](http://tmux.sourceforge.net/) pane, this wi
 * Ubuntu 12.04 and above (tested on 12.04 and 14.04)
 * Linux Mint 13 and above (experimental, untested)
 
+All were amd64 (x86\_64).
+
 ## Syntax
 
 * Unprivileged: `./debian-build-image <router-model> [path-to-asuswrt-merlin]`
@@ -29,10 +31,13 @@ You can leave out the `path-to-asuswrt-merlin` argument and the script will chec
 
 ### Supported router models
 
+#### MIPS-based routers
 * RT-N16
 * RT-N66U
-* RT-AC56U
 * RT-AC66U
+
+#### ARM-based routers
+* RT-AC56U
 * RT-AC68U & RT-AC68U\_V2
 * RT-AC69U
 * RT-AC87U
@@ -64,9 +69,11 @@ USE_SUDO=1 ./debian-build-image RT-N66U
 
 In order to have the script install all the prerequisites using `apt-get`, use the following method:
 
-* `./debian-build-image --prereq` (or `-P`)
+* `./debian-build-image -p <router-model>` (or `--prereq` instead of `-p`)
 
 Please note that this requires you to be a sudoer. Usually that means you need to be a member of the group `sudo` on `.deb`-based distros or `wheel` on `.rpm`-based distros.
+
+**NOTE:** Strictly speaking the command should also work without the router model given, but it may miss some model-specific prerequisites in such a case. As an example: ARM routers require `libelf1:i386` because the `gcc` of the ARM toolchain depends on it.
 
 ## Usage on Debian, Linux Mint and Ubuntu
 

@@ -31,7 +31,7 @@ show_time_diff()
 }
 help_syntax() # show a brief help screen
 {
-	echo -e "${W}SYNTAX:${Z} ${0##*/} <router-model> [path]\n"
+	echo -e "${W}SYNTAX:${Z} ${0##*/} [-p|--prereq] [-h|--help] <router-model> [path]\n"
 	echo -e "\twhere:\n\
 \t* ${W}path${Z} is a directory containing the asuswrt-merlin sources\n\
 \t  (default is the directory with this script: $CURRABSPATH)\n\
@@ -95,7 +95,6 @@ install_required_packages()
 			DPKG_ADD_ARCH="dpkg --add-architecture i386"
 			echo -e "${Y}NOTE:${Z} you are running a $(dpkg --print-architecture) system, but we need libelf1:i386. So we will need to run\n\t${W}${SUDO+$SUDO }${DPKG_ADD_ARCH}${Z}\n... prior to the ${W}apt-get${Z} invocation. This is just to inform you about the fact.\n"
 		fi
-		REQ_PKGS="${REQ_PKGS//libelf1/libelf1:i386}" # we need the 32-bit package, though
 	fi
 	echo -e "The command to be run is (beware of line breaks in overlong lines!):\n\n${W}${SUDO+$SUDO }$APTI ${Z}${REQ_PKGS}\n"
 	echo -ne "Do you want to continue? ([${W}y${Z}]es/[${W}N${Z}]o/[${W}s${Z}]imulate)"
@@ -103,10 +102,14 @@ install_required_packages()
 	[[ $ans =~ ^[YySs]$ ]] || { echo -e "\n${Y}NOTE:${Z} aborted by user."; exit 1; }
 	if [[ $ans =~ ^[Ss]$ ]]; then
 		( set -x; $DPKG_ADD_ARCH && $APTI -s ${REQ_PKGS} )
+		exit 0
 	else
-		( set -x; $SUDO $SHELL -c "$DPKG_ADD_ARCH && $APTI ${REQ_PKGS}" )
+		( set -x; $SUDO $SHELL -c "$DPKG_ADD_ARCH && apt-get update && $APTI ${REQ_PKGS}" ) || fatal "an error occured when trying to install missing package dependencies."
+		PREREQ_MISSING_NUM=0
+		echo -ne "\nDo you want to proceed with the firmware build now? ([${W}y${Z}]es/[${W}N${Z}]o)"
+		read -p " " ans
+		[[ $ans =~ ^[Yy]$ ]] || { echo -e "\n${Y}INFO:${Z} aborted by user."; exit 0; }
 	fi
-	exit 0
 }
 check_or_fail_os_prereq()
 {
@@ -143,10 +146,24 @@ check_runtime_requirements()
 	# On x86_64 we also need two additional packages
 	[[ "$(uname -m)" == "x86_64" ]] && PREREQ_PKGS+=(lib32z1-dev lib32stdc++6)
 	# For ARM routers add libelf1
-	[[ "$ARCH" == "ARM" ]] && PREREQ_PKGS+=(libelf1)
+	if [[ "$ARCH" == "ARM" ]]; then
+		[[ "$(dpkg --print-architecture)" == "amd64" ]] && PREREQ_PKGS+=(libelf1:i386) || PREREQ_PKGS+=(libelf1)
+	fi
 }
 tell_missing_packages()
 {
+	local OTHER_ARCH_PREREQ_PKGS=()
+	if [[ ${PREREQ_PKGS[*]} =~ :i386 ]] && [[ "$(dpkg --print-architecture)" == "amd64" ]]; then
+		if [[ ! $(dpkg --print-foreign-architectures) =~ i386 ]]; then
+			echo -e "${Y}NOTE:${Z} trying to find the list of missing packages may fail or yield an incomplete list.\n  The reason is that you require a package from a foreign architecture not installed on your system: i386.\n  You can still run this script with the ${W}--prereq${Z} option to fix missing dependencies."
+		fi
+		NEW_PREREQ_PKGS=()
+		# Weed out packages which would cause errors
+		for r in ${PREREQ_PKGS[*]}; do
+			[[ $r =~ :i386 ]] && OTHER_ARCH_PREREQ_PKGS+=($r) || NEW_PREREQ_PKGS+=($r)
+		done
+		PREREQ_PKGS=(${NEW_PREREQ_PKGS[*]})
+	fi
 	# Find the packages which are already installed, so we can remove them from the list of required packages
 	local INST_ALREADY=($($APTI -s ${PREREQ_PKGS[*]}|awk '/is already the newest version\.$/ {print $1}'))
 	PREREQ_MISSING=($(for pkg in $(echo ""|awk -f <(cat - <<-'EOF'
@@ -165,6 +182,7 @@ tell_missing_packages()
 		}
 	EOF
 	)); do echo "$pkg"; done|sort -u))
+	PREREQ_MISSING+=(${OTHER_ARCH_PREREQ_PKGS[*]})
 	PREREQ_MISSING_NUM=${#PREREQ_MISSING[@]}
 	if ((PREREQ_MISSING_NUM > 0)); then
 		echo -e "${R}ERROR:${Z} ${PREREQ_MISSING_NUM} required packages are missing on your system:\n\t${Z} ${PREREQ_MISSING[*]}\n"
