@@ -129,13 +129,13 @@ check_runtime_requirements()
 		LinuxMint)
 			echo -e "${Y}WARNING:${Z} this script should for all practical purposes run on Linux Mint >= 13 (maya), but it's possible that it doesn't. ${REPORT_BACK}."
 			((OS_REL < 13)) && check_or_fail_os_prereq
-			((OS_REL >= 16)) && { PREREQ_PKGS+=(automake1.11 libproxy-dev); UBUNTU_EXTRAS=1; }
+			((OS_REL >= 16)) && { PREREQ_PKGS+=(automake1.11 autopoint intltool libproxy-dev); UBUNTU_EXTRAS=1; }
 			;;
 		Ubuntu)
 			((OS_REL < 12)) && check_or_fail_os_prereq
 			local UBUREL=0x$(lsb_release -sr|tr -d '.')
 			# On Ubuntu 13.10 and later we check for two additional packages
-			((UBUREL >= 0x1310)) && { PREREQ_PKGS+=(automake1.11 libproxy-dev); UBUNTU_EXTRAS=1; }
+			((UBUREL >= 0x1310)) && { PREREQ_PKGS+=(automake1.11 autopoint intltool libproxy-dev); UBUNTU_EXTRAS=1; }
 			;;
 		*)
 			echo -e "${Y}WARNING:${Z} this is an ${W}unsupported Debian flavor${Z}. It is possible, even likely, that this will fail. ${REPORT_BACK}."
