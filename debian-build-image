@@ -102,7 +102,7 @@ install_required_packages()
 	read -p " " ans
 	[[ $ans =~ ^[YySs]$ ]] || { echo -e "\n${Y}NOTE:${Z} aborted by user."; exit 1; }
 	if [[ $ans =~ ^[Ss]$ ]]; then
-		( set -x; $DPKG_ADD_ARCH && $APTI -s ${REQ_PKGS} )
+		( set -x; ${DPKG_ADD_ARCH:-true} && $APTI -s ${REQ_PKGS} )
 		exit 0
 	else
 		( set -x; $SUDO $SHELL -c "$DPKG_ADD_ARCH && apt-get update && $APTI ${REQ_PKGS}" ) || fatal "an error occured when trying to install missing package dependencies."

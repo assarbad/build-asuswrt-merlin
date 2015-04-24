@@ -85,8 +85,8 @@ Please note that this requires you to be a sudoer. Usually that means you need t
   * via SSH: `git clone git@github.com:RMerl/asuswrt-merlin.git`
   * via HTTPS: `git clone https://github.com/RMerl/asuswrt-merlin.git`
 * Clone this repository or download the raw `debian-build-image` script:
-  * via SSH: `git@github.com:assarbad/build-asuswrt-merlin.git`
-  * via HTTPS: `https://github.com/assarbad/build-asuswrt-merlin.git`
+  * via SSH: `git clone git@github.com:assarbad/build-asuswrt-merlin.git`
+  * via HTTPS: `git clone https://github.com/assarbad/build-asuswrt-merlin.git`
   * Download `wget https://raw.githubusercontent.com/assarbad/build-asuswrt-merlin/master/debian-build-image && chmod +x debian-build-image`
 * Copy `debian-build-image` into the clone of RMerl/asuswrt-merlin (e.g. `~/asuswrt-merlin`).
 * Change into the RMerl/asuswrt-merlin directory (e.g. `~/asuswrt-merlin`) and invoke `./debian-build-image --prereq` there.
