@@ -108,6 +108,32 @@ At this point you'll probably want to take a break and come back later. This wil
 * You'll want to issue a `git reset --hard` inside the cloned repository to undo all the changes `debian-build-image` does
 * And then start over after the preparation steps above
 
+## Usage with Vagrant
+
+It should be easiest way to build firmware in virtual machine using [Vagrant](http://www.vagrantup.com/).
+
+First run a virtual machine:
+
+    vagrant up
+
+Second look for some firmware release version on [releases page](https://github.com/RMerl/asuswrt-merlin/releases) and build an image for desired router model:
+
+    vagrant ssh -- compile-image -m RT-N66U -r 378.55
+
+Then wait for cloning sources from GitHub into VM, building an image and copying it to `release/` directory.
+
+You can build firmware from any Git branch, for example 'master':
+
+    vagrant ssh -- compile-image -m RT-N66U -r master
+
+At the end, stop VM:
+
+    vagrant halt
+
+or remove it completely:
+
+    vagrant destroy
+
 ## Contribute
 
 Please contribute by reporting issues and sending pull requests.

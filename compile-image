@@ -1,0 +1,205 @@
+#!/bin/sh
+# vim: set autoindent smartindent ts=4 sw=4 sts=4 noet filetype=sh:
+###############################################################################
+## This is provision/build helper script for Vagrant.
+## Look in Vagrantfile for more details.
+###############################################################################
+
+set -e
+
+## Router model. 'RT-N66U', 'RT-AC66U', and etc.
+MODEL=""
+
+## Tag, commit sha or branch on asuswrt-merlin repository is used to make the
+## image.
+RELEASE=""
+
+## The folder for storing sources.
+## Note, it isn't possible to use '/vagrant' shared folder for sources now,
+## because of the asuswrt-merlin build currently requires hardlinks. According
+## to the virtualbox issue (https://www.virtualbox.org/ticket/818) they don't
+## support hardlinks in shared folders, and they don't seem to plan on adding
+## that.
+SRCDIR="/home/vagrant/asuswrt-merlin"
+
+## The path of the directory in which the builed images will be stored.
+## It is relative to $VOLUME thus images will be available on the host system.
+RELEASEDIR="release"
+
+## The path of the Vagrant shared folder.
+VOLUME="/vagrant"
+
+## The URL of the asuswrt-merlin Git repository.
+GITURL="https://github.com/RMerl/asuswrt-merlin"
+REMOTE=origin
+
+## The name of the build script.
+BUILD_IMAGE="ubuntu-build-image"
+
+LOGFILE="/tmp/build.log"
+SELFNAME="${0##*/}"
+export DEBIAN_FRONTEND=noninteractive
+
+
+display_help() {
+	echo "Usage: ${SELFNAME} [OPTION]..."
+	echo "Build asuswrt-merlin image for ASUS router from sources."
+	echo "Example: ${SELFNAME} -m RT-N66U -r 378.55"
+	echo ""
+	echo "  -h, --help        display this help and exit"
+	echo "  -m, --model       optional router model name you'd build image"
+	echo "  -r, --release     optional release specified by tag or branch in the git repository"
+	echo "                    see https://github.com/RMerl/asuswrt-merlin/releases"
+	echo "                    for more details Default is 'master'."
+	echo ""
+	echo "This script should be run in a virtual machine."
+}
+
+
+check_locale() (
+	# enshure all used locales are defined
+	get_undefined_locales() {
+		# this display locales in 'locale' output that are missed in 'locale -a'
+		locale 2>/dev/null \
+			| awk -F '[=]' '/^LC_/{print $2}' | sed 's#"##g;' | grep . | sort | uniq \
+			| while read line; do
+				locale -a | sed 's#[-]##g;' | tr '[:upper:]' '[:lower:]' \
+					| grep -q "$(echo $line | sed 's#[-]##g;' | tr '[:upper:]' '[:lower:]')" || echo $line
+			done
+	}
+	undefined_locales="$(get_undefined_locales)"
+	if [ -n "$undefined_locales" ]; then
+		echo "Install locales"
+		echo $undefined_locales | xargs sudo locale-gen && sudo dpkg-reconfigure locales
+	fi
+)
+
+
+provision() {
+	echo "Enshure all requirements are installed"
+	check_locale
+
+	# enshure we are have 'git' installed
+	if ! hash git 2> /dev/null; then
+		echo "Install 'git' binary"
+		sudo apt-get update -y
+		sudo apt-get install -y --no-install-recommends git-core
+	fi
+
+	echo "Provision complete."
+}
+
+
+checkout_sources() {
+	echo "Get asuswrt-merlin sources"
+
+	# enshure we have asuswrt-merlin sources
+	if [ ! -d "$SRCDIR" ]; then
+		echo "Clone $GITURL repository"
+		git clone "$GITURL" "$SRCDIR"
+	fi
+
+	cd "$SRCDIR"
+
+	echo "Check $(git config --get remote.${REMOTE}.url) for updates"
+	git fetch "$REMOTE" || echo "Skipped: remote repository does not reachable now."
+
+	echo "Cleanup source directory"
+	git reset
+	git clean -dffx
+
+	if [ -n "$RELEASE" ]; then
+		echo "Checkout release '$RELEASE'"
+		git checkout -f "$RELEASE"
+		git merge "$REMOTE/$RELEASE" 2>/dev/null || :;
+	else
+		RELEASE="$(git describe --always --tags)"
+	fi
+}
+
+
+build_image() {
+	if [ ! -n "$MODEL" ]; then
+		echo "You need to specify some router model for building image."
+		return 1
+	fi
+
+	echo "Build image for $MODEL ($RELEASE)"
+	USE_SUDO=1 $BUILD_IMAGE -y -p "$MODEL" "$SRCDIR" | tee "$LOGFILE"
+}
+
+
+copy_image_to_volume() {
+	echo "Release image $MODEL ($RELEASE)"
+	IMAGE=$(cat "$LOGFILE" | grep -Pzo 'Your image can be found here:\n.*' | tail -n1 | cut -f2-)
+	if [ -n "$IMAGE" ] && [ -f "$SRCDIR/$IMAGE" ]; then
+		if [ ! -d "$VOLUME/$RELEASEDIR" ]; then
+			mkdir -p "$VOLUME/$RELEASEDIR"
+		fi
+
+		echo Copy image to $RELEASEDIR/$(basename "$IMAGE")
+		cp "$SRCDIR/$IMAGE" "$VOLUME/$RELEASEDIR"
+	else
+		echo "Error: it seems build failed. See $LOGFILE for more details."
+		echo "Failed"
+		return 1
+	fi
+}
+
+
+do_compile() {
+	provision
+	checkout_sources
+	build_image
+
+	if [ -d "$VOLUME" ]; then
+		copy_image_to_volume
+	fi
+
+	echo "Done"
+}
+
+
+# parse arguments
+while test $# -gt 0; do
+	opt="$1"
+
+	case "$opt" in
+		-h|--help)
+			display_help
+			exit 0
+			;;
+		-m|--model)
+			MODEL="$2"
+			shift
+			;;
+		-r|--release)
+			RELEASE="$2"
+			shift
+			;;
+		--) # End of all options
+			break;
+			;;
+		-*)
+			echo "${SELFNAME}: unrecognized option '$1'" >&2
+			echo "Try '${SELFNAME} --help' for more information." >&2
+			exit 1
+			;;
+		*)
+			display_help >&2
+			exit 1
+			;;
+	esac
+
+	if test $# -gt 0; then
+		shift
+	else
+		echo "${SELFNAME}: option '${opt}' requires an argument" >&2
+		echo "Try '${SELFNAME} --help' for more information." >&2
+		exit 1
+	fi
+done
+
+
+do_compile
+

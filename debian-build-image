@@ -364,6 +364,7 @@ function_exists hook_pre_clean && hook_pre_clean "$BASEDIR/release/$MKBASE"
 echo -e "${Y}NOTE:${Z} running ${W}make -C release/$MKBASE clean${Z}"
 make -C "$BASEDIR/release/$MKBASE" "TOOLCHAIN=$TOOLCHAIN" clean > /dev/null 2>&1
 function_exists hook_pre_make && hook_pre_make "$BASEDIR/release/$MKBASE"
+set -e
 echo -e "${Y}NOTE:${Z} running ${W}make -C release/$MKBASE ${ROUTERMDL,,}${Z}"
 make -C "$BASEDIR/release/$MKBASE" "TOOLCHAIN=$TOOLCHAIN" ${ROUTERMDL,,}
 function_exists hook_post_make && hook_post_make "$BASEDIR/release/$MKBASE"
