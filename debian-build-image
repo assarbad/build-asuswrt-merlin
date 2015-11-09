@@ -11,13 +11,63 @@ pushd $(dirname $0) > /dev/null; CURRABSPATH=$(readlink -nf "$(pwd)"); popd > /d
 TESTED_ON="tested on: ${W}Ubuntu 12.04 & 14.04${Z} and ${W}Debian 7.8${Z}"
 REPORT_BACK="${W}Please report back${Z} about successes and failures at <https://github.com/assarbad/build-asuswrt-merlin> (e.g. by opening a ticket)"
 TOOLCHAIN_BINARIES="mipsel-linux-addr2line mipsel-linux-ar mipsel-linux-as mipsel-linux-c++ mipsel-linux-cc mipsel-linux-c++filt mipsel-linux-cpp mipsel-linux-g++ mipsel-linux-gcc mipsel-linux-gcc-4.2.4 mipsel-linux-gcov mipsel-linux-gprof mipsel-linux-ld mipsel-linux-nm mipsel-linux-objcopy mipsel-linux-objdump mipsel-linux-ranlib mipsel-linux-readelf mipsel-linux-size mipsel-linux-strings mipsel-linux-strip"
-[[ ${1^^} =~ ^(-P|--PREREQ[A-Z]*)$ ]] && { INSTALL_PREREQ=1; shift; ROUTERMDL="${1}"; }
-ROUTERMDL=${1}
+INSTALL_PREREQ=""
 APTI="apt-get --no-install-recommends install"
-BASEDIR=${2:-$CURRABSPATH}
+INTERACTIVE=1
+
+help_syntax() # show a brief help screen
+{
+	echo -e "${W}SYNTAX:${Z} ${0##*/} [-p|--prereq] [-y|--yes] [-h|--help] <router-model> [path]\n"
+	echo -e "\twhere:\n\
+\t* ${W}-p, --prereq${Z} Install all the prerequisites using 'apt-get'\n\
+\t  (please note that this requires you to be a sudoer)\n\
+\t* ${W}-y, --yes${Z} Automatic yes to prompts\n\
+\t  (assume "yes" as answer to all prompts and run non-interactively)\n\
+\t* ${W}path${Z} is a directory containing the asuswrt-merlin sources\n\
+\t  (default is the directory with this script: $CURRABSPATH)\n\
+\t* ${W}router-model${Z} is the model name you'd pass to make\n\
+\t  (e.g. rt-n66u, rt-ac66u etc, see ${W}README.md${Z})\n"
+	echo -e "Variables:\n\
+\t${W}USE_SUDO${Z} if set will 'install' and use tools in /opt, but requires ${W}sudo${Z}.\n\
+\t${W}FORCE_UNSUPPORTED${Z} if set will proceed even if the system doesn't match prerequisites 100%.\n\
+\t${W}TMUX_PANE${Z} if unset/empty will suppress logging inside a Tmux session."
+}
+
+# parse arguments
+while [[ $# > 0 ]]; do
+	case "$1" in
+	-p|--prereq)
+		INSTALL_PREREQ=1
+		shift
+	;;
+	-y|--yes)
+		INTERACTIVE=""
+		shift
+	;;
+	-h|--help)
+		help_syntax
+		exit 0
+	;;
+	-*) echo "unknown option: $1" >&2;
+		exit 1
+	;;
+	*)
+		ROUTERMDL="${1}"
+		BASEDIR="${2:-$CURRABSPATH}"
+		shift; shift
+	;;
+	esac
+done
+
+if [[ ! -n "$INTERACTIVE" ]]; then
+	APTI="$APTI -y"
+	export DEBIAN_FRONTEND=noninteractive
+fi
+
+let TIME_START=$(date +%s)
 CURRDATE=$(date +'%Y-%m-%dT%H-%M-%S')
 _TMUX_LOG="$BASEDIR/tmux-${CURRDATE}.log"
-let TIME_START=$(date +%s)
+
 show_time_diff()
 {
 	local START=$1
@@ -28,19 +78,6 @@ show_time_diff()
 	local DIFF_MIN=$((DIFF/60))
 	local DIFF_SEC=$((DIFF%60))
 	printf "$MSG\n" $(printf "%d:%02d" "$DIFF_MIN" "$DIFF_SEC")
-}
-help_syntax() # show a brief help screen
-{
-	echo -e "${W}SYNTAX:${Z} ${0##*/} [-p|--prereq] [-h|--help] <router-model> [path]\n"
-	echo -e "\twhere:\n\
-\t* ${W}path${Z} is a directory containing the asuswrt-merlin sources\n\
-\t  (default is the directory with this script: $CURRABSPATH)\n\
-\t* ${W}router-model${Z} is the model name you'd pass to make\n\
-\t  (e.g. rt-n66u, rt-ac66u etc, see ${W}README.md${Z})\n"
-	echo -e "Variables:\n\
-\t${W}USE_SUDO${Z} if set will 'install' and use tools in /opt, but requires ${W}sudo${Z}.\n\
-\t${W}FORCE_UNSUPPORTED${Z} if set will proceed even if the system doesn't match prerequisites 100%.\n\
-\t${W}TMUX_PANE${Z} if unset/empty will suppress logging inside a Tmux session."
 }
 fatal() # show the given error, include the help screen if requested and then exit with status 1
 {
@@ -96,11 +133,17 @@ install_required_packages()
 			DPKG_ADD_ARCH="dpkg --add-architecture i386"
 			echo -e "${Y}NOTE:${Z} you are running a $(dpkg --print-architecture) system, but we need libelf1:i386. So we will need to run\n\t${W}${SUDO+$SUDO }${DPKG_ADD_ARCH}${Z}\n... prior to the ${W}apt-get${Z} invocation. This is just to inform you about the fact.\n"
 		fi
+        else
+		DPKG_ADD_ARCH="true"
 	fi
 	echo -e "The command to be run is (beware of line breaks in overlong lines!):\n\n${W}${SUDO+$SUDO }$APTI ${Z}${REQ_PKGS}\n"
-	echo -ne "Do you want to continue? ([${W}y${Z}]es/[${W}N${Z}]o/[${W}s${Z}]imulate)"
-	read -p " " ans
-	[[ $ans =~ ^[YySs]$ ]] || { echo -e "\n${Y}NOTE:${Z} aborted by user."; exit 1; }
+	if [[ -n $INTERACTIVE ]]; then
+		echo -ne "Do you want to continue? ([${W}y${Z}]es/[${W}N${Z}]o/[${W}s${Z}]imulate)"
+		read -p " " ans
+		[[ $ans =~ ^[YySs]$ ]] || { echo -e "\n${Y}NOTE:${Z} aborted by user."; exit 1; }
+	else
+		ans=y
+	fi
 	if [[ $ans =~ ^[Ss]$ ]]; then
 		( set -x; ${DPKG_ADD_ARCH:-true} && $APTI -s ${REQ_PKGS} )
 		exit 0
@@ -200,8 +243,6 @@ function_exists()
 #   grep -hoP 'RT-(AC|N)\d+[URW]*(_V\d+)?' release/src-rt*/target.mak|sort -u
 OLD_ROUTERMDL=${ROUTERMDL^^}
 case ${ROUTERMDL^^} in
-	-H|--HELP)
-		help_syntax; exit 0;;
 	# release/src-rt
 	RT-N16)
 		MKBASE="src-rt";;
@@ -258,10 +299,12 @@ tell_missing_packages
 # Did the user ask to install prerequisites instead?
 [[ -n "$INSTALL_PREREQ" ]] && install_required_packages "${PREREQ_MISSING[*]}"
 ((PREREQ_MISSING_NUM > 0)) && fatal "can't continue because of missing packages.\n\nPlease use:\n\t${W}${0##*/} --prereq $ROUTERMDL${Z}\nor:\n\t${W}$APTI${Z} ${PREREQ_MISSING[*]}\nto install missing packages."
-if [[ -n "$INSTALL_PREREQ" ]]; then
-	echo -ne "\nDo you want to proceed with the firmware build now? ([${W}y${Z}]es/[${W}N${Z}]o)"
-	read -p " " ans
-	[[ $ans =~ ^[Yy]$ ]] || { echo -e "\n${Y}INFO:${Z} aborted by user."; exit 0; }
+if [[ -n "$INTERACTIVE" ]]; then
+	if [[ -n "$INSTALL_PREREQ" ]]; then
+		echo -ne "\nDo you want to proceed with the firmware build now? ([${W}y${Z}]es/[${W}N${Z}]o)"
+		read -p " " ans
+		[[ $ans =~ ^[Yy]$ ]] || { echo -e "\n${Y}INFO:${Z} aborted by user."; exit 0; }
+	fi
 fi
 # Special steps required on Ubuntu newer than or equal to 13.10
 if [[ -n "$UBUNTU_EXTRAS" ]]; then
